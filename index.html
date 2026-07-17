@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BokiNavi.app - 高機能マネー管理システム</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+
+        /* ── ヘッダー ── */
+        .main-header {
+            background-color: #1e2530;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .header-logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .header-logo span { color: white; font-size: 14px; font-weight: normal; }
+        .header-asset-status { font-size: 12px; color: #b3c1d1; min-width: 140px; }
+        .header-asset-status strong { color: #2ecc71; font-size: 15px; }
+        
+        .header-search-container {
+            display: flex;
+            flex-grow: 1;
+            max-width: 500px;
+            height: 38px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #34495e;
+        }
+        .search-select { background-color: #f8f9fa; border: none; padding: 0 15px; font-size: 13px; border-right: 1px solid #ddd; }
+        .search-input { flex-grow: 1; border: none; padding: 0 12px; font-size: 14px; outline: none; }
+        .search-btn { background-color: #3498db; border: none; width: 50px; color: white; font-weight: bold; cursor: pointer; }
+
+        .header-nav-items { display: flex; gap: 25px; font-size: 12px; }
+        .nav-item span { color: #b3c1d1; display: block; }
+        .nav-item strong { color: white; font-size: 14px; }
+
+        /* ── ナビゲーション（タブ切り替え用） ── */
+        .sub-nav {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px 20px;
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            align-items: center;
+        }
+        .sub-nav-links { display: flex; gap: 20px; }
+        .sub-nav-links a {
+            color: #ecf0f1;
+            text-decoration: none;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .sub-nav-links a:hover, .sub-nav-links a.active {
+            color: white;
+            background-color: #3498db;
+        }
+        .sub-nav-status { margin-left: auto; background-color: #2ecc71; color: white; font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: bold; }
+
+        /* ── コンテンツ表示エリア制御 ── */
+        .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+        
+        /* 💡 画面の切り替えに使う重要クラス */
+        .app-view { display: none; }
+        .app-view.active-view { display: block; }
+
+        /* カードとグリッド */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } .header-asset-status, .header-search-container { display: none; } }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        button.submit-btn { width: 100%; padding: 10px; background-color: #3498db; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button.submit-btn:hover { background-color: #2980b9; }
+        
+        .chart-container { position: relative; margin: auto; height: 250px; width: 250px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+
+        .category-underline { display: inline-block; padding-bottom: 2px; font-weight: bold; border-bottom: 3px solid transparent; }
+        .badge-auto { background-color: #e74c3c; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; }
+        
+        /* カレンダー風グリッド */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; margin-top: 15px; }
+        .calendar-day-head { font-weight: bold; background-color: #eee; padding: 5px; }
+        .calendar-day { background: #fff; padding: 15px 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; min-height: 60px; }
+        .calendar-day .has-data { color: #e74c3c; font-weight: bold; display: block; font-size: 10px; }
+        /* 💡 追加：ロゴとアイコンを綺麗に横並びにするスタイル */
+.header-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* アイコンと文字の間の隙間 */
+    font-size: 20px;
+    font-weight: bold;
+    color: #3498db;
+    text-decoration: none;
+}
+
+.logo-icon {
+    width: 28px;
+    height: 28px;
+    color: #3498db; /* アイコンのベースカラー（文字と同じ青） */
+    flex-shrink: 0;
+}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<header class="main-header">
+    <a href="#" class="header-logo" onclick="switchView('dashboard')">BokiNavi<span>.app</span></a>
+    <div class="header-asset-status"><span>現在の総資産</span><br><strong>¥ 342,500</strong></div>
+    <div class="header-search-container">
+        <select class="search-select"><option>すべての科目</option></select>
+        <input type="text" class="search-input" placeholder="キーワードで仕訳を検索...">
+        <button class="search-btn">検索</button>
+    </div>
+    <div class="header-nav-items">
+        <div class="nav-item"><span>Shion さん</span><strong>マイアカウント</strong></div>
+        <div class="nav-item"><span>今月の登録数</span><strong id="total-count-badge">3 件の仕訳</strong></div>
+    </div>
+</header>
+
+<nav class="sub-nav">
+    <div class="sub-nav-links">
+        <a id="nav-dashboard" class="active" onclick="switchView('dashboard')">ダッシュボード</a>
+        <a id="nav-monthly" onclick="switchView('monthly')">月別詳細レポート</a>
+        <a id="nav-calendar" onclick="switchView('calendar')">カレンダー登録</a>
+        <a id="nav-recurring" onclick="switchView('recurring')">定額自動仕訳設定</a>
+        <a id="nav-export" onclick="switchView('export')">CSVエクスポート</a>
+    </div>
+    <div class="sub-nav-status">今月の予算残高: あと ¥ 45,200</div>
+</nav>
+
+<div class="container">
+
+    <div id="view-dashboard" class="app-view active-view">
+        <div class="grid">
+            <div class="card">
+                <h2>手動でお金の記録入力</h2>
+                <form id="finance-form">
+                    <div class="form-group">
+                        <label for="category">勘定科目（カテゴリ）</label>
+                        <select id="category" required>
+                            <option value="食費">食費（費用）</option>
+                            <option value="日用品">日用品（費用）</option>
+                            <option value="交際費">交際費（費用）</option>
+                            <option value="交通費">交通費（費用）</option>
+                            <option value="その他">その他（費用）</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">金額 (円)</label>
+                        <input type="number" id="amount" min="1" placeholder="例: 1000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="memo">摘要（メモ）</label>
+                        <input type="text" id="memo" placeholder="例: コンビニで昼食">
+                    </div>
+                    <button type="submit" class="submit-btn">仕訳を登録する</button>
+                </form>
+            </div>
+            <div class="card">
+                <h2>支出割合（円グラフ）</h2>
+                <div class="chart-container"><canvas id="expenseChart"></canvas></div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>取引履歴（仕訳帳）</h2>
+            <table>
+                <thead><tr><th>カテゴリ</th><th>金額</th><th>備考</th></tr></thead>
+                <tbody id="history-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="view-monthly" class="app-view">
+        <div class="card">
+            <h2>月別詳細レポート (2026年7月)</h2>
+            <p>当月の勘定科目ごとの合計値および合計支出金額です。</p>
+            <table style="margin-top: 20px;">
+                <thead><tr><th>勘定科目</th><th>合計金額</th><th>割合</th></tr></thead>
+                <tbody id="monthly-report-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="view-calendar" class="app-view">
+        <div class="card">
+            <h2>カレンダー登録ビュー (2026年7月)</h2>
+            <p style="font-size: 13px; color:#666;">日付ごとにお金の動きが可視化されます。</p>
+            <div class="calendar-grid">
+                <div class="calendar-day-head">日</div><div class="calendar-day-head">月</div><div class="calendar-day-head">火</div><div class="calendar-day-head">水</div><div class="calendar-day-head">木</div><div class="calendar-day-head">金</div><div class="calendar-day-head">土</div>
+                <div class="calendar-day"></div><div class="calendar-day"></div><div class="calendar-day"></div>
+                <div class="calendar-day">1</div><div class="calendar-day">2</div><div class="calendar-day">3<span class="has-data">¥400</span></div><div class="calendar-day">4</div>
+                <div class="calendar-day">5</div><div class="calendar-day">6</div><div class="calendar-day">7</div><div class="calendar-day">8</div><div class="calendar-day">9</div><div class="calendar-day">10<span class="has-data">¥1,200</span></div><div class="calendar-day">11</div>
+                <div class="calendar-day">12<span class="has-data">¥2,000</span></div><div class="calendar-day">13</div><div class="calendar-day">14</div><div class="calendar-day">15</div><div class="calendar-day">16</div><div class="calendar-day">17</div><div class="calendar-day">18</div>
+                <div class="calendar-day">19</div><div class="calendar-day">20</div><div class="calendar-day">21</div><div class="calendar-day">22</div><div class="calendar-day">23</div><div class="calendar-day">24</div><div class="calendar-day">25<span class="has-data">¥60,000</span></div>
+                <div class="calendar-day">26</div><div class="calendar-day">27</div><div class="calendar-day">28</div><div class="calendar-day">29</div><div class="calendar-day">30</div><div class="calendar-day">31</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-recurring" class="app-view">
+        <div class="card">
+            <h2>定額自動仕訳（固定費リピート）設定</h2>
+            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">毎月指定の日が来ると、システムが自動的に支出を計上します。</p>
+            <table>
+                <thead><tr><th>発生日</th><th>勘定科目</th><th>金額</th><th>備考</th></tr></thead>
+                <tbody>
+                    <tr><td>毎月 25 日</td><td>その他</td><td>60,000 円</td><td>固定費：家賃</td></tr>
+                    <tr><td>毎月 10 日</td><td>交際費</td><td>1,200 円</td><td>固定費：動画サブスク</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="view-export" class="app-view">
+        <div class="card">
+            <h2>データの書き出し (CSVエクスポート)</h2>
+            <p style="margin-bottom: 20px;">登録されたすべての仕訳データをExcel等で読み込めるCSV形式でダウンロードします。</p>
+            <button class="submit-btn" style="background-color: #2ecc71;" onclick="exportToCSV()">CSVファイルをダウンロードする</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 共有データ
+    const ledgerData = [
+        { category: '食費', amount: 1200, memo: 'ランチ', isAuto: false },
+        { category: '日用品', amount: 800, memo: '洗剤など', isAuto: false },
+        { category: '交通費', amount: 400, memo: '電車移動', isAuto: false }
+    ];
+
+    const recurringSettings = [
+        { day: 25, category: 'その他', amount: 60000, memo: '固定費：家賃' },
+        { day: 10, category: '交際費', amount: 1200, memo: '固定費：動画サブスク' }
+    ];
+
+    const colorMap = { '食費': '#ff6384', '日用品': '#36a2eb', '交際費': '#ffcd56', '交通費': '#4bc0c0', 'その他': '#9966ff' };
+    let expenseChart;
+
+    // 💡 画面切り替えロジック
+    function switchView(viewName) {
+        // 全画面クラスを非表示に
+        document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active-view'));
+        document.querySelectorAll('.sub-nav-links a').forEach(link => link.classList.remove('active'));
+        
+        // 指定画面を表示
+        document.getElementById(`view-${viewName}`).classList.add('active-view');
+        document.getElementById(`nav-${viewName}`).classList.add('active');
+
+        // 必要に応じて再計算
+        if (viewName === 'dashboard') { updateChart(); }
+        if (viewName === 'monthly') { generateMonthlyReport(); }
+    }
+
+    // 自動仕訳チェック
+    function checkAndApplyRecurringExpenses() {
+        const today = new Date();
+        const currentDay = today.getDate();
+        recurringSettings.forEach(setting => {
+            if (currentDay >= setting.day) {
+                const alreadyExists = ledgerData.some(item => item.memo === setting.memo + '（自動仕訳）');
+                if (!alreadyExists) {
+                    ledgerData.push({ category: setting.category, amount: setting.amount, memo: setting.memo + '（自動仕訳）', isAuto: true });
+                }
+            }
+        });
+        document.getElementById('total-count-badge').innerText = `${ledgerData.length} 件の仕訳`;
+    }
+
+    // グラフ更新
+    function updateChart() {
+        const totals = { '食費': 0, '日用品': 0, '交際費': 0, '交通費': 0, 'その他': 0 };
+        ledgerData.forEach(item => { if (totals[item.category] !== undefined) totals[item.category] += item.amount; });
+        if (expenseChart) expenseChart.destroy();
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        expenseChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(totals),
+                datasets: [{ data: Object.values(totals), backgroundColor: Object.keys(totals).map(k => colorMap[k]) }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+
+    // 履歴テーブル更新
+    function updateTable() {
+        const tableBody = document.getElementById('history-table');
+        tableBody.innerHTML = ''; 
+        for (let i = ledgerData.length - 1; i >= 0; i--) {
+            const item = ledgerData[i];
+            const autoBadge = item.isAuto ? '<span class="badge-auto">自動</span>' : '';
+            tableBody.innerHTML += `<tr>
+                <td><span class="category-underline" style="border-bottom-color: ${colorMap[item.category]};">${item.category}</span>${autoBadge}</td>
+                <td>${item.amount.toLocaleString()} 円</td>
+                <td>${item.memo}</td>
+            </tr>`;
+        }
+    }
+
+    // 💡 月別レポート自動集計
+    function generateMonthlyReport() {
+        const totals = { '食費': 0, '日用品': 0, '交際費': 0, '交通費': 0, 'その他': 0 };
+        let grandTotal = 0;
+        ledgerData.forEach(item => { totals[item.category] += item.amount; grandTotal += item.amount; });
+
+        const tableBody = document.getElementById('monthly-report-table');
+        tableBody.innerHTML = '';
+        Object.keys(totals).forEach(cat => {
+            const percentage = grandTotal > 0 ? ((totals[cat] / grandTotal) * 100).toFixed(1) : 0;
+            tableBody.innerHTML += `<tr>
+                <td><strong>${cat}</strong></td>
+                <td>${totals[cat].toLocaleString()} 円</td>
+                <td>${percentage} %</td>
+            </tr>`;
+        });
+        tableBody.innerHTML += `<tr style="background:#eaeded; font-weight:bold;"><td>総合計支出</td><td>${grandTotal.toLocaleString()} 円</td><td>100 %</td></tr>`;
+    }
+
+    // 💡 CSVエクスポートロジック
+    function exportToCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,勘定科目,金額,備考\n";
+        ledgerData.forEach(item => { csvContent += `${item.category},${item.amount},${item.memo}\n`; });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "BokiNavi_仕訳データ.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // フォーム送信
+    document.getElementById('finance-form').addEventListener('submit', function(e) {
+        e.preventDefault(); 
+        const category = document.getElementById('category').value;
+        const amount = parseInt(document.getElementById('amount').value);
+        const memo = document.getElementById('memo').value || 'なし';
+        ledgerData.push({ category, amount, memo, isAuto: false });
+        document.getElementById('total-count-badge').innerText = `${ledgerData.length} 件の仕訳`;
+        updateChart();
+        updateTable();
+        document.getElementById('amount').value = '';
+        document.getElementById('memo').value = '';
+    });
+
+    // 起動
+    checkAndApplyRecurringExpenses();
+    updateChart();
+    updateTable();
+</script>
+
+</body>
+</html>
+<a href="#" class="header-logo" onclick="switchView('dashboard')">
+    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path>
+        <path d="M4 6v12a2 2 0 0 0 2 2h14v-4"></path>
+        <path d="M18 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4v-6h-4z"></path>
+        <path d="M8 15l2.5-2.5 2.5 2.5L16 11" stroke="#2ecc71" stroke-width="2"></path> </svg>
+    BokiNavi<span>.app</span>
+</a>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+        <style>
+        .left-top-img {
+            position: absolute; /* 画面ではなく、ページ全体の左上に配置する */
+            top: 100px;          /* 上から10ピクセルの位置 */
+            left: 10px;         /* 左から10ピクセルの位置 */
+            z-index: 1000;      /* 他の文字より手前に表示させる */
+        }
+    </style>
+</head>
+<body>
+
+    <img src="ロゴのマーク１.png" alt="ロゴ" width="100" class="left-top-img">
+
+    <div style="height: 2000px; padding-top: 100px;">
+
+</body>
